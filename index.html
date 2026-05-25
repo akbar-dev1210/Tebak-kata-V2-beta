@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Tebak Kata</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #1a1a2e;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            background-color: #16213e;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 90%;
+            max-width: 500px;
+        }
+        h1 {
+            color: #e94560;
+            margin-bottom: 30px;
+        }
+        button {
+            background-color: #0f3460;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            margin: 10px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 80%;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #e94560;
+        }
+        input[type="text"] {
+            padding: 12px;
+            width: 80%;
+            font-size: 18px;
+            border-radius: 8px;
+            border: 2px solid #0f3460;
+            margin: 20px 0;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        .hidden {
+            display: none;
+        }
+        #game-screen, #settings-screen, #win-screen {
+            display: none;
+        }
+        .clue {
+            font-size: 18px;
+            font-style: italic;
+            color: #a8dadc;
+            margin-bottom: 20px;
+        }
+        .level-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .feedback {
+            font-weight: bold;
+            margin-top: 15px;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="bgMusic" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="lobby-screen" class="container">
+        <h1>Tebak Kata<br>Nusantara</h1>
+        <button onclick="startGame()">Mulai Game</button>
+        <button onclick="showSettings()">Pengaturan</button>
+        <button onclick="exitGame()">Keluar</button>
+    </div>
+
+    <div id="settings-screen" class="container">
+        <h1>Pengaturan</h1>
+        <button onclick="toggleMusic()" id="musicBtn">Matikan Musik</button>
+        <button onclick="backToLobby()">Kembali ke Lobi</button>
+    </div>
+
+    <div id="game-screen" class="container">
+        <div class="level-title" id="levelDisplay">Level 1</div>
+        <div class="clue" id="clueDisplay">Petunjuk akan muncul di sini</div>
+        
+        <input type="text" id="answerInput" placeholder="Ketik jawabanmu..." autocomplete="off">
+        <br>
+        <button onclick="checkAnswer()">Tebak</button>
+        <button onclick="backToLobby()">Kembali ke Lobi</button>
+        
+        <div class="feedback" id="feedbackMsg"></div>
+    </div>
+
+    <div id="win-screen" class="container">
+        <h1>Selamat!</h1>
+        <p>Kamu telah menyelesaikan semua level!</p>
+        <button onclick="backToLobby()">Main Lagi</button>
+    </div>
+
+    <script>
+        // Database Level
+        const levels = [
+            { level: 1, word: "BUKU", clue: "Tempat untuk menulis atau membaca." },
+            { level: 2, word: "CANDI", clue: "Bangunan bersejarah peninggalan kerajaan Hindu-Buddha." },
+            { level: 3, word: "SIRKUIT", clue: "Tempat khusus untuk balapan mobil atau motor." },
+            { level: 4, word: "BANDARA", clue: "Tempat pesawat terbang lepas landas dan mendarat." },
+            { level: 5, word: "SRIWIJAYA", clue: "Kerajaan maritim Buddha terbesar di Nusantara." },
+            { level: 6, word: "KOKPIT", clue: "Ruang kemudi tempat pilot menerbangkan pesawat." },
+            { level: 7, word: "AERODINAMIKA", clue: "Ilmu yang mengatur aliran udara pada bodi mobil balap." },
+            { level: 8, word: "MAJAPAHIT", clue: "Kerajaan Hindu-Buddha yang terkenal dengan patih Gajah Mada." },
+            { level: 9, word: "AVTUR", clue: "Bahan bakar yang digunakan untuk pesawat terbang komersial." },
+            { level: 10, word: "TARUMANEGARA", clue: "Kerajaan Hindu tertua di Pulau Jawa." }
+        ];
+
+        let currentLevelIndex = 0;
+        let isMusicPlaying = false;
+        const bgMusic = document.getElementById("bgMusic");
+
+        // Fungsi Menampilkan Layar Tertentu
+        function hideAllScreens() {
+            document.getElementById("lobby-screen").style.display = "none";
+            document.getElementById("game-screen").style.display = "none";
+            document.getElementById("settings-screen").style.display = "none";
+            document.getElementById("win-screen").style.display = "none";
+        }
+
+        function backToLobby() {
+            hideAllScreens();
+            document.getElementById("lobby-screen").style.display = "block";
+            document.getElementById("feedbackMsg").innerText = "";
+            document.getElementById("answerInput").value = "";
+        }
+
+        function showSettings() {
+            hideAllScreens();
+            document.getElementById("settings-screen").style.display = "block";
+        }
+
+        // Fungsi Audio
+        function playMusic() {
+            if (!isMusicPlaying) {
+                bgMusic.volume = 0.3; // Volume 30%
+                bgMusic.play().catch(e => console.log("Autoplay diblokir browser, butuh interaksi user."));
+                isMusicPlaying = true;
+                document.getElementById("musicBtn").innerText = "Matikan Musik";
+            }
+        }
+
+        function toggleMusic() {
+            if (isMusicPlaying) {
+                bgMusic.pause();
+                isMusicPlaying = false;
+                document.getElementById("musicBtn").innerText = "Nyalakan Musik";
+            } else {
+                bgMusic.play();
+                isMusicPlaying = true;
+                document.getElementById("musicBtn").innerText = "Matikan Musik";
+            }
+        }
+
+        // Fungsi Game
+        function startGame() {
+            playMusic();
+            currentLevelIndex = 0;
+            hideAllScreens();
+            document.getElementById("game-screen").style.display = "block";
+            loadLevel();
+        }
+
+        function loadLevel() {
+            const currentLevel = levels[currentLevelIndex];
+            document.getElementById("levelDisplay").innerText = "Level " + currentLevel.level;
+            document.getElementById("clueDisplay").innerText = "Petunjuk: " + currentLevel.clue;
+            document.getElementById("answerInput").value = "";
+            document.getElementById("feedbackMsg").innerText = "";
+            document.getElementById("answerInput").focus();
+        }
+
+        function checkAnswer() {
+            const userAnswer = document.getElementById("answerInput").value.trim().toUpperCase();
+            const correctAnswer = levels[currentLevelIndex].word;
+            const feedback = document.getElementById("feedbackMsg");
+
+            if (userAnswer === correctAnswer) {
+                feedback.style.color = "#4caf50"; // Warna Hijau
+                feedback.innerText = "Benar!";
+                
+                setTimeout(() => {
+                    currentLevelIndex++;
+                    if (currentLevelIndex < levels.length) {
+                        loadLevel();
+                    } else {
+                        hideAllScreens();
+                        document.getElementById("win-screen").style.display = "block";
+                    }
+                }, 1000); // Lanjut ke level berikutnya setelah 1 detik
+            } else {
+                feedback.style.color = "#e94560"; // Warna Merah
+                feedback.innerText = "Salah, coba lagi!";
+            }
+        }
+
+        // Enter untuk menebak
+        document.getElementById("answerInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                checkAnswer();
+            }
+        });
+
+        // Fungsi Keluar Game
+        function exitGame() {
+            alert("Terima kasih sudah bermain! (Fitur keluar hanya menutup halaman jika dibuka di tab baru).");
+            window.close(); // Ini mungkin diblokir oleh beberapa browser jika bukan pop-up
+        }
+    </script>
+</body>
+</html>
